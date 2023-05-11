@@ -1,0 +1,22 @@
+{
+    "presets": [
+        [
+            "@babel/preset-env",
+            {
+                "useBuiltIns": "usage",
+                "corejs":3
+            }
+        ]
+    ],
+    "plugins": [
+        [
+            // 作用，1.用途是为您的代码创建一个沙盒环境。如果您直接导入core-js或@babel/polyfill及其提供的内置插件，例如Promise,Set和Map，这些将污染全局范围。
+            // 虽然这对于应用程序或命令行工具来说可能没问题，但如果您的代码是一个您打算发布供其他人使用的库，或者如果您无法准确控制代码运行的环境，这就会成为一个问题。
+            // 所有帮助程序都将引用该模块@babel/runtime以避免编译输出中的重复。运行时将编译到您的构建中。
+            "@babel/plugin-transform-runtime",
+            {
+                "corejs": 3
+            }
+        ]
+    ]
+}
