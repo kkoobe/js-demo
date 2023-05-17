@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片拼接</title>
+</head>
+<body>
+    <button class="upload-logo">上传logo</button>
+    <button class="upload-pic">上传图片</button>
+    <input type="file" class="file-input" multiple>
+    <button class="contact-pic">合成图片</button>
+    <script>
+        let logo = ''
+        let picArr = []
+        // 添加上传logo事件
+        let logoBtn = document.querySelector('.upload-logo')
+        let picBtn = document.querySelector('.upload-pic')
+        let fileInputDom = document.querySelector('.file-input')
+        let oprDom = document.querySelector('.contact-pic')
+        logoBtn.addEventListener('click',function(e){
+            fileInputDom.multiple = false
+            fileInputDom.click()
+        })
+        picBtn.addEventListener('click',function(e){
+            fileInputDom.multiple = true
+            fileInputDom.click()
+        })
+        oprDom.addEventListener('click',function(){
+            if(!logo) return alert('请先上传logo图片，再试！')
+            if(!picArr.length) return alert('请先上传图片，再试！')
+            picArr.forEach((pic)=>{
+                contactPic(logo,pic)
+            })
+        })
+        // 将文件转成base64
+        function filesToBase64(files){
+            console.log(files)
+            let promiseArr = Array.from(files).map(file=>{
+                return new Promise((resolve,reject)=>{
+                    let fileReader = new FileReader()
+                    fileReader.readAsDataURL(file)
+                    fileReader.addEventListener('load',function(e){
+                        let url = fileReader.result
+                        resolve(url)
+                    })
+                })
+            })
+            return Promise.all(promiseArr)
+        }
+        fileInputDom.addEventListener('change',async function(e){
+            let targetdom = e.target
+            let {files,multiple} = targetdom
+            if(!multiple){ //传的logo
+                let res = await filesToBase64(files)
+                    // console.log(res,'resres')
+                    logo = res[0]
+                    let canvas = document.createElement("canvas");
+                    let ctx = canvas.getContext('2d')
+                    let img = await createImg(logo)
+                    drawPic(img,canvas,ctx)
+                    document.body.appendChild(canvas);
+            }else{
+                let res = await filesToBase64(files)
+                    picArr = res
+                    picArr.forEach(async pic=>{
+                        let canvas = document.createElement("canvas");
+                        let ctx = canvas.getContext('2d')
+                        let picImg = await createImg(pic)
+                        drawPic(picImg,canvas,ctx)
+                        document.body.appendChild(canvas);
+                    })
+            }
+            targetdom.value = ''
+        })
+        // 图片合成
+        async function contactPic(logoUrl,picUrl){
+            let canvas = document.createElement("canvas");
+            let ctx = canvas.getContext('2d')
+            
+            let picImg = await createImg(picUrl)
+            let logoImg = await createImg(logoUrl)
+            drawPic(picImg,canvas,ctx)
+            drawPic(logoImg,canvas,ctx)
+            document.body.appendChild(canvas);
+        }
+        // 将图片绘制到canvas上
+        function drawPic(img,canvas,ctx,width,height,x=0,y=0){
+            canvas.width = canvas.width>img.width?canvas.width:img.width
+            canvas.height = canvas.height>img.height?canvas.height:img.height
+            ctx.drawImage(img, x, y,img.width,img.height);
+        }
+        // 创建图片
+        function createImg(imgUrl){
+            return new Promise((resolve,reject)=>{
+                let img = new Image()
+                img.src = imgUrl
+                img.onload = function(e){
+                    resolve(img)
+                }
+            })
+        }
+    </script>
+</body>
+</html>
