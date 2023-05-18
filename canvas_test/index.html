@@ -78,18 +78,18 @@
         async function contactPic(logoUrl,picUrl){
             let canvas = document.createElement("canvas");
             let ctx = canvas.getContext('2d')
-            
             let picImg = await createImg(picUrl)
             let logoImg = await createImg(logoUrl)
+            canvas.width = Math.max(picImg.width,logoImg.width)
+            canvas.height = Math.max(picImg.height,logoImg.height)
+            ctx.globalCompositeOperation = 'source-over'
             drawPic(picImg,canvas,ctx)
             drawPic(logoImg,canvas,ctx)
             document.body.appendChild(canvas);
         }
         // 将图片绘制到canvas上
         function drawPic(img,canvas,ctx,width,height,x=0,y=0){
-            canvas.width = canvas.width>img.width?canvas.width:img.width
-            canvas.height = canvas.height>img.height?canvas.height:img.height
-            ctx.drawImage(img, x, y,img.width,img.height);
+            ctx.drawImage(img, x, y);
         }
         // 创建图片
         function createImg(imgUrl){
