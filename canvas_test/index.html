@@ -1,106 +1,239 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>图片拼接</title>
 </head>
+
 <body>
-    <button class="upload-logo">上传logo</button>
-    <button class="upload-pic">上传图片</button>
-    <input type="file" class="file-input" multiple>
-    <button class="contact-pic">合成图片</button>
-    <script>
-        let logo = ''
-        let picArr = []
-        // 添加上传logo事件
-        let logoBtn = document.querySelector('.upload-logo')
-        let picBtn = document.querySelector('.upload-pic')
-        let fileInputDom = document.querySelector('.file-input')
-        let oprDom = document.querySelector('.contact-pic')
-        logoBtn.addEventListener('click',function(e){
-            fileInputDom.multiple = false
-            fileInputDom.click()
-        })
-        picBtn.addEventListener('click',function(e){
-            fileInputDom.multiple = true
-            fileInputDom.click()
-        })
-        oprDom.addEventListener('click',function(){
-            if(!logo) return alert('请先上传logo图片，再试！')
-            if(!picArr.length) return alert('请先上传图片，再试！')
-            picArr.forEach((pic)=>{
-                contactPic(logo,pic)
-            })
-        })
-        // 将文件转成base64
-        function filesToBase64(files){
-            console.log(files)
-            let promiseArr = Array.from(files).map(file=>{
-                return new Promise((resolve,reject)=>{
-                    let fileReader = new FileReader()
-                    fileReader.readAsDataURL(file)
-                    fileReader.addEventListener('load',function(e){
-                        let url = fileReader.result
-                        resolve(url)
-                    })
-                })
-            })
-            return Promise.all(promiseArr)
+    <style>
+        [v-cloak] {
+            display: none;
         }
-        fileInputDom.addEventListener('change',async function(e){
-            let targetdom = e.target
-            let {files,multiple} = targetdom
-            if(!multiple){ //传的logo
-                let res = await filesToBase64(files)
-                    // console.log(res,'resres')
-                    logo = res[0]
-                    let canvas = document.createElement("canvas");
-                    let ctx = canvas.getContext('2d')
-                    let img = await createImg(logo)
-                    drawPic(img,canvas,ctx)
-                    document.body.appendChild(canvas);
-            }else{
-                let res = await filesToBase64(files)
-                    picArr = res
-                    picArr.forEach(async pic=>{
+        body {
+            box-sizing: border-box;
+        }
+        .div-box {
+            font-size:0 ;
+        }
+        .img-box {
+            display: inline-block;
+            font-size: 0;
+            position: relative;
+        }
+        .img-box img {
+            border-radius: 10px;
+            max-width: 100%;
+            object-fit: contain;
+        }
+        .img-logo {
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        .flex-column-center {
+            display: flex;
+            align-items: center;
+        }
+        .flex1 {
+            flex: 1;
+        }
+        .ml30 {
+            margin-left: 30px;
+        }
+        .wd300 {
+            width: 300px;
+        }
+    </style>
+    <div id="app" v-cloak>
+        <el-button @click="handlePicBtn" class="upload-pic">上传图片</el-button>
+        <el-button @click="handleLogoBtn" class="upload-logo">上传logo</el-button>
+        <div class="flex-column-center">
+            <span>调整logo：</span>
+            <div class="flex-column-center wd300">
+                <span>缩放</span>
+                <el-slider @input="handleScale" class="flex1 ml30" v-model="scaleValue"></el-slider>
+            </div>
+            <div class="flex-column-center wd300 ml30">
+                <span>旋转</span>
+                <el-slider @input="handleRorate" :min="0" :max="360" class="flex1 ml30" v-model="rotateValue"></el-slider>
+            </div>
+        </div>
+        <input @change="handleUpload" ref="fileInputDom" style="display: none;" type="file" class="file-input" :multiple="multiple">
+        <el-button @click="handleContect" class="contact-pic">生成图片并下载</el-button>
+    </div>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="./drag.js"></script>
+    <script>
+        let vm = new Vue({
+            el: '#app',
+            components: {
+
+            },
+            data: {
+                scaleValue: 0,
+                rotateValue:0,
+                logo: '',
+                picArr: [],
+                multiple:false
+            },
+            methods: {
+                handleLogoBtn() {
+                    this.multiple = false
+                    this.$nextTick(()=>{
+                        this.$refs.fileInputDom.click()
+                    })
+                },
+                handlePicBtn() {
+                    this.multiple = true
+                    this.$nextTick(()=>{
+                        this.$refs.fileInputDom.click()
+                    })
+                },
+                handleContect() {
+                    if (!this.logo) return alert('请先上传logo图片，再试！')
+                    if (!this.picArr.length) return alert('请先上传图片，再试！')
+                    let picBoxArr = document.querySelectorAll('.img-box')
+                    Array.from(picBoxArr).forEach((picBox,index) => {
+                        let logoImg = picBox.querySelector('.img-logo')
+                        let picImg = picBox.querySelector('.img-pic')
+                        console.log(logoImg,picImg)
+                        this.contactPic(logoImg, picImg,index)
+                    })
+                },
+                filesToBase64(files) {
+                    let promiseArr = Array.from(files).map(file => {
+                        return new Promise((resolve, reject) => {
+                            let fileReader = new FileReader()
+                            fileReader.readAsDataURL(file)
+                            fileReader.addEventListener('load', function (e) {
+                                let url = fileReader.result
+                                resolve(url)
+                            })
+                        })
+                    })
+                    return Promise.all(promiseArr)
+                },
+                async handleUpload(e) {
+                    console.log('0000')
+                    let targetdom = e.target
+                    let { files, multiple } = targetdom
+                    if (!multiple) { //传的logo
+                        let res = await this.filesToBase64(files)
+                        this.logo = res[0]
                         let canvas = document.createElement("canvas");
                         let ctx = canvas.getContext('2d')
-                        let picImg = await createImg(pic)
-                        drawPic(picImg,canvas,ctx)
-                        document.body.appendChild(canvas);
+                        
+                        let imgBoxArr = document.querySelectorAll('.img-box')
+                        if (!imgBoxArr.length) {
+                            targetdom.value = ''
+                            return alert('请先上传图片！')
+                        }
+                        Array.from(imgBoxArr).forEach(async item => {
+                            let img = await this.createImg(this.logo)
+                            img.classList.add('img-logo')
+                            item.appendChild(img)
+                            new Drag(img)
+                        })
+                    } else {
+                        let res = await this.filesToBase64(files)
+                        this.picArr = res
+                        let divBox = document.createElement('div')
+                        divBox.classList.add('div-box')
+                        this.picArr.forEach(async pic => {
+                            let canvas = document.createElement("canvas");
+                            let ctx = canvas.getContext('2d')
+                            let picImg = await this.createImg(pic)
+                            picImg.classList.add('img-pic')
+                            let imgBox = document.createElement('div')
+                            imgBox.classList.add('img-box')
+                            if(this.logo){
+                                let img = await this.createImg(this.logo)
+                                
+                                img.classList.add('img-logo')
+                                imgBox.appendChild(img)
+                            }
+                            imgBox.appendChild(picImg)
+                            divBox.appendChild(imgBox)
+                        })
+                        document.body.appendChild(divBox)
+                    }
+                    targetdom.value = ''
+                },
+                async contactPic(logoImg, picImg,index) {
+                    let canvas = document.createElement("canvas");
+                    let ctx = canvas.getContext('2d')
+                    canvas.width = Math.max(picImg.offsetWidth, logoImg.offsetWidth)
+                    canvas.height = Math.max(picImg.offsetHeight, logoImg.offsetHeight)
+                    console.log(canvas.width,canvas.height,'00000')
+                    ctx.globalCompositeOperation = 'source-over'
+                    let {offsetHeight,offsetWidth,offsetLeft,offsetTop} = this.getOffset(index)
+                    this.drawPic(picImg, canvas, ctx)
+                    let isRotate = this.rotateValue?true:false
+                    this.drawPic(logoImg, canvas, ctx,offsetLeft,offsetTop,offsetWidth,offsetHeight,isRotate)
+                    let href = canvas.toDataURL('image/jpeg',1)
+                    this.download(href)
+                },
+                drawPic(img, canvas, ctx, x = 0, y = 0,width,height,isRotate) {
+                    if(isRotate){
+                        console.log(x,width,y,height,123)
+                        ctx.translate(x+width/2, y+height/2)
+                        ctx.rotate(Math.PI / 180 * this.rotateValue)
+                        ctx.drawImage(img, x, y,width||img.width,height||img.height);
+                        isRotate&&ctx.translate(-(x+width/2), -(y+height/2))
+                        ctx.rotate(-Math.PI / 180 * this.rotateValue)
+                    }else {
+                        ctx.drawImage(img, x, y,width||img.width,height||img.height);
+                    }
+                    
+                    
+
+                },
+                createImg(imgUrl) {
+                    return new Promise((resolve, reject) => {
+                        let img = new Image()
+                        img.src = imgUrl
+                        img.onload = function (e) {
+                            resolve(img)
+                        }
                     })
-            }
-            targetdom.value = ''
-        })
-        // 图片合成
-        async function contactPic(logoUrl,picUrl){
-            let canvas = document.createElement("canvas");
-            let ctx = canvas.getContext('2d')
-            let picImg = await createImg(picUrl)
-            let logoImg = await createImg(logoUrl)
-            canvas.width = Math.max(picImg.width,logoImg.width)
-            canvas.height = Math.max(picImg.height,logoImg.height)
-            ctx.globalCompositeOperation = 'source-over'
-            drawPic(picImg,canvas,ctx)
-            drawPic(logoImg,canvas,ctx)
-            document.body.appendChild(canvas);
-        }
-        // 将图片绘制到canvas上
-        function drawPic(img,canvas,ctx,width,height,x=0,y=0){
-            ctx.drawImage(img, x, y);
-        }
-        // 创建图片
-        function createImg(imgUrl){
-            return new Promise((resolve,reject)=>{
-                let img = new Image()
-                img.src = imgUrl
-                img.onload = function(e){
-                    resolve(img)
+                },
+                // 获取第n张图的logo宽高
+                getOffset(index){
+                   logo = document.querySelectorAll('.img-logo')[index]
+                   let {offsetHeight,offsetWidth,offsetLeft,offsetTop} = logo
+                   return {offsetHeight,offsetWidth,offsetLeft,offsetTop}
+                },
+                handleScale(){
+                    Array.from(document.querySelectorAll('.img-logo')).forEach((item)=>{
+                        console.log(this.scaleValue)
+                        item.style.width = this.scaleValue+'%'
+                    })
+                },
+                handleRorate(){
+                    Array.from(document.querySelectorAll('.img-logo')).forEach((item)=>{
+                        console.log(item)
+                        item.style.transform = `rotate(${this.rotateValue}deg)`
+                    })
+                },
+                // 下载
+                download(href){
+                    let a = document.createElement('a')
+                    a.href = href
+                    let filename = href.slice(10,18)
+                    a.download = filename
+                    a.click()
                 }
-            })
-        }
+            }
+        })
     </script>
 </body>
+
 </html>
